@@ -3,124 +3,155 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HQ: deliberation in minutes</title>
-<meta name="description" content="One parallel deliberation system, four tools. Submit an artifact or a question; a panel of independent reasoners deliberates and returns a structured report.">
+<title>HQ · H4, the parallel model for structured deliberation</title>
+<meta name="description" content="H4 is a parallel deliberation model. Submit an artifact or a question; independent deliberations run in parallel and one structured report comes back in minutes.">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="%2308090B"/><path d="M4 8h13M4 13h13M4 19h13M4 24h13" stroke="%238A8F98" stroke-width="2"/><rect x="21" y="8" width="7" height="18" fill="%23FBF7EF"/></svg>'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0e0e10; --panel:#141416; --fg:#f4f4f5; --body:#c8c8c8; --muted:#8a8a90; --dim:#4a4a50;
-    --hi:#a78bfa; --hi-soft:rgba(167,139,250,.10); --hi-dim:rgba(167,139,250,.28);
-    --border:rgba(255,255,255,.10); --border-2:rgba(255,255,255,.18);
-    --paper:#f6f5f2; --paper-ink:#1a1a1a; --paper-muted:#5a5a5a;
-    --serif:'Spectral',Georgia,serif; --sans:'Space Grotesk',system-ui,sans-serif;
+    --bg:#08090B; --panel:#111318; --raise:#1A1D24;
+    --fg:#F2F3F5; --body:#C6C9CE; --muted:#8A8F98; --dim:#4A4E58;
+    --hi:#9B7CFF; --hi-live:#5C7CFF; --hi-soft:rgba(155,124,255,.10); --hi-dim:rgba(155,124,255,.30);
+    --line:#2A2E38;
+    --paper:#FBF7EF; --paper-soft:#F4F1EA; --paper-ink:#1A1A1A; --paper-muted:#5A5A5A;
+    --amber:#FFB84D; --red:#FF5A5F; --green:#37C978; --eu:#003399;
+    --sans:'Inter',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace; --serif:'Source Serif 4',Georgia,serif;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--bg);color:var(--body);font-family:var(--serif);font-size:17px;line-height:1.7;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:920px;margin:0 auto;padding:0 clamp(20px,5vw,48px)}
+  body{margin:0;background:var(--bg);color:var(--body);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,5vw,64px)}
   a{color:var(--hi);text-decoration:none} a:hover{text-decoration:underline}
-  h1,h2,h3{font-weight:500;letter-spacing:-.01em;color:var(--fg);line-height:1.2}
-  .label{font-family:var(--sans);font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
-  .sans{font-family:var(--sans)}
+  h1,h2,h3{font-weight:600;letter-spacing:-.02em;color:var(--fg);line-height:1.15;margin:0}
+  .label{font-family:var(--mono);font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
 
   /* header */
-  header{border-bottom:1px solid var(--border)}
-  .bar{display:flex;justify-content:space-between;align-items:center;padding:20px 0}
-  .brand{font-family:var(--sans);font-weight:600;letter-spacing:.06em;color:var(--fg);font-size:1rem}
+  header{border-bottom:1px solid var(--line)}
+  .bar{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+  .brand{font-family:var(--mono);font-weight:600;letter-spacing:.08em;color:var(--fg);font-size:.95rem}
   .brand span{color:var(--hi)}
-  .navlinks a{font-family:var(--sans);font-size:.8rem;color:var(--muted);margin-left:22px}
-  @media(max-width:560px){.navlinks{display:none}}
+  .navlinks a{font-size:.8rem;color:var(--muted);margin-left:22px}
+  .navlinks a:hover{color:var(--fg);text-decoration:none}
+  @media(max-width:600px){.navlinks{display:none}}
 
   /* hero */
-  .hero{padding:76px 0 48px}
-  .hero .label{margin-bottom:22px}
-  .hero h1{font-size:clamp(2rem,5vw,3rem);max-width:16ch}
-  .hero .lede{font-size:1.18rem;color:var(--body);max-width:60ch;margin:22px 0 0}
-  .hero .sub{color:var(--muted);max-width:58ch;margin:18px 0 0;font-size:1.02rem}
-  .hero .sub b{color:var(--body);font-weight:500}
+  .hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(32px,5vw,72px);align-items:center;padding:clamp(64px,9vw,120px) 0 clamp(48px,7vw,96px)}
+  @media(max-width:860px){.hero{grid-template-columns:1fr;padding-top:56px}}
+  .hero .over{font-family:var(--mono);font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;color:var(--hi);margin-bottom:26px}
+  .hero h1{font-size:clamp(2.1rem,4.6vw,3.4rem);max-width:15ch}
+  .hero .lede{font-size:1.08rem;color:var(--body);max-width:52ch;margin:24px 0 0;line-height:1.7}
+  .hero .ctas{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-weight:600;font-size:.88rem;background:var(--hi);color:#120b22;border:none;border-radius:6px;padding:13px 24px;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{background:#a98dff;text-decoration:none}
+  .btn.ghost{background:none;border:1px solid var(--line);color:var(--body)}
+  .btn.ghost:hover{border-color:var(--hi-dim);color:var(--fg);background:none}
+  .hero .fact{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-top:26px;letter-spacing:.04em}
 
-  section{padding:52px 0;border-top:1px solid var(--border)}
-  .sec-label{margin-bottom:26px}
+  /* the H4 parallel mark (hero graphic) */
+  .mark{width:100%;max-width:520px;margin:0 auto;display:block}
+  .mark .lane{stroke:var(--dim);stroke-width:1.5;fill:none;stroke-dasharray:1;stroke-dashoffset:1;animation:draw .7s cubic-bezier(.2,.8,.2,1) forwards}
+  .mark .lane:nth-child(1){animation-delay:.05s}
+  .mark .l2{animation-delay:.17s}
+  .mark .l3{animation-delay:.29s}
+  .mark .l4{animation-delay:.41s}
+  .mark .core{opacity:0;animation:appear .5s ease-out .65s forwards}
+  .mark .out{stroke:var(--hi);stroke-width:1.5;fill:none;stroke-dasharray:1;stroke-dashoffset:1;animation:draw .4s ease-out .95s forwards}
+  .mark .rep{opacity:0;animation:appear .6s ease-out 1.15s forwards}
+  .mark text{font-family:'IBM Plex Mono',monospace;letter-spacing:.14em}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes appear{to{opacity:1}}
 
-  /* tool grid 2x2 */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+  section{padding:clamp(56px,8vw,104px) 0;border-top:1px solid var(--line)}
+  .sec-label{margin-bottom:30px}
+  .sec-lead{font-size:1.02rem;color:var(--body);max-width:62ch;margin:0 0 34px}
+
+  /* method */
+  .method{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  @media(max-width:640px){.method{grid-template-columns:1fr}}
+  .step{background:var(--bg);padding:24px 22px}
+  .step .n{font-family:var(--mono);font-size:.68rem;color:var(--hi);letter-spacing:.14em}
+  .step h4{font-size:.94rem;font-weight:600;color:var(--fg);margin:10px 0 6px;letter-spacing:-.01em}
+  .step p{margin:0;font-size:.86rem;color:var(--muted);line-height:1.55}
+  .caption{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:16px;letter-spacing:.02em}
+
+  /* tools */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
   @media(max-width:640px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--bg);padding:28px 26px;display:flex;flex-direction:column;transition:background .2s}
-  .card:hover{background:var(--panel)}
-  .card .situ{font-family:var(--sans);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--hi);margin-bottom:12px}
-  .card h3{font-size:1.32rem;margin:0 0 4px}
-  .card .type{font-family:var(--sans);font-size:.72rem;color:var(--muted);margin-bottom:14px}
-  .card p{margin:0 0 16px;font-size:.98rem;color:var(--body)}
-  .card .use{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:auto;padding-top:14px;border-top:1px solid var(--border)}
+  .card{background:var(--bg);padding:30px 28px;display:flex;flex-direction:column;transition:background .2s;color:inherit}
+  .card:hover{background:var(--panel);text-decoration:none}
+  .card .situ{font-family:var(--mono);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--hi);margin-bottom:14px}
+  .card h3{font-size:1.28rem;margin:0 0 4px}
+  .card .type{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:16px;letter-spacing:.03em}
+  .card p{margin:0 0 16px;font-size:.94rem;color:var(--body);line-height:1.6}
+  .card .use{font-size:.82rem;color:var(--muted);margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
   .card .use b{color:var(--body);font-weight:500}
-  .card .go{font-family:var(--sans);font-size:.8rem;color:var(--hi);margin-top:14px}
-  .eu{display:inline-block;font-family:var(--sans);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--hi);border:1px solid var(--hi-dim);border-radius:2px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+  .card .go{font-family:var(--mono);font-size:.74rem;color:var(--hi);margin-top:14px;letter-spacing:.06em}
+  .eu{display:inline-block;font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:var(--eu);border-radius:2px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+  .notsure{margin-top:26px;font-size:.94rem;color:var(--muted)}
 
-  .notsure{margin-top:26px;font-size:.98rem;color:var(--muted)}
-
-  /* comparison table */
-  table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:.84rem;margin-top:6px}
+  /* comparison */
+  table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:44px}
   .tscroll{overflow-x:auto}
-  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
-  th{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
-  td b{color:var(--fg);font-weight:500}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  td b{color:var(--fg);font-weight:600}
   td{color:var(--body)}
 
-  /* method strip */
-  .method{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
-  @media(max-width:640px){.method{grid-template-columns:1fr}}
-  .step{background:var(--bg);padding:22px 20px}
-  .step .n{font-family:var(--sans);font-size:.7rem;color:var(--hi);letter-spacing:.1em}
-  .step h4{font-family:var(--sans);font-size:.92rem;font-weight:600;color:var(--fg);margin:8px 0 6px}
-  .step p{margin:0;font-size:.86rem;color:var(--muted);line-height:1.5}
-
-  /* sample report: the document is the brand */
-  .report{background:var(--paper);color:var(--paper-ink);border-radius:3px;padding:clamp(26px,4vw,44px);margin-top:8px;font-family:var(--serif);box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
-  .report .rlabel{font-family:var(--sans);font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;color:var(--paper-muted)}
-  .report h3{color:var(--paper-ink);font-size:1.5rem;margin:10px 0 4px}
-  .report .verdict{font-family:var(--sans);font-size:.78rem;font-weight:600;letter-spacing:.05em;color:#8a1f1f;margin-bottom:18px}
-  .report .finding{border-top:1px solid #e2e0da;padding:16px 0}
-  .report .sev{font-family:var(--sans);font-size:.68rem;font-weight:700;letter-spacing:.08em;color:#8a1f1f}
+  /* sample report: the deliverable, in its own type system */
+  .report{background:var(--paper);color:var(--paper-ink);border-radius:4px;padding:clamp(28px,4vw,48px);margin-top:8px;font-family:var(--serif);box-shadow:0 40px 90px -50px rgba(0,0,0,.95);position:relative}
+  .report::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--hi) 0 25%,transparent 25% 27%,var(--hi) 27% 50%,transparent 50% 52%,var(--hi) 52% 75%,transparent 75% 77%,var(--hi) 77% 100%);border-radius:4px 4px 0 0}
+  .report .rlabel{font-family:var(--mono);font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--paper-muted)}
+  .report h3{font-family:var(--serif);color:var(--paper-ink);font-size:1.5rem;margin:10px 0 4px;font-weight:600;letter-spacing:0}
+  .report .verdict{font-family:var(--mono);font-size:.74rem;font-weight:600;letter-spacing:.05em;color:#8a1f1f;margin-bottom:18px}
+  .report .finding{border-top:1px solid #e2ddd2;padding:16px 0}
+  .report .sev{font-family:var(--mono);font-size:.64rem;font-weight:600;letter-spacing:.1em;color:#8a1f1f}
   .report .sev.major{color:#8a5a1f}
-  .report h4{margin:6px 0 6px;font-size:1.05rem;color:var(--paper-ink)}
-  .report p{margin:6px 0;font-size:.94rem;color:#33322f;line-height:1.6}
-  .report .rmeta{font-family:var(--sans);font-size:.72rem;color:var(--paper-muted);margin-top:20px;padding-top:14px;border-top:1px solid #e2e0da}
-  .caption{font-family:var(--sans);font-size:.78rem;color:var(--muted);margin-top:14px}
+  .report h4{font-family:var(--serif);margin:6px 0;font-size:1.06rem;color:var(--paper-ink);font-weight:600}
+  .report p{margin:6px 0;font-size:.95rem;color:#33322f;line-height:1.65}
+  .report .rmeta{font-family:var(--mono);font-size:.68rem;color:var(--paper-muted);margin-top:20px;padding-top:14px;border-top:1px solid #e2ddd2;letter-spacing:.02em}
 
   /* trust */
-  .trust{display:grid;grid-template-columns:1fr 1fr;gap:24px 40px}
+  .trust{display:grid;grid-template-columns:1fr 1fr;gap:26px 44px}
   @media(max-width:640px){.trust{grid-template-columns:1fr}}
-  .trust h4{font-family:var(--sans);font-size:.82rem;font-weight:600;color:var(--fg);margin:0 0 6px}
-  .trust p{margin:0;font-size:.92rem;color:var(--muted);line-height:1.55}
+  .trust h4{font-size:.86rem;font-weight:600;color:var(--fg);margin:0 0 6px}
+  .trust p{margin:0;font-size:.9rem;color:var(--muted);line-height:1.6}
 
   /* pricing */
-  .pintro{color:var(--body);max-width:64ch;margin:0 0 22px;font-size:1.02rem}
-  .billtoggle{display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:26px;font-family:var(--sans)}
-  .billtoggle button{background:none;border:none;color:var(--muted);font-family:inherit;font-size:.82rem;padding:9px 18px;cursor:pointer}
+  .pintro{color:var(--body);max-width:64ch;margin:0 0 8px;font-size:1rem}
+  .pro-line{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin:0 0 24px;letter-spacing:.04em}
+  .billtoggle{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:26px}
+  .billtoggle button{background:none;border:none;color:var(--muted);font-family:var(--sans);font-size:.82rem;padding:9px 18px;cursor:pointer}
   .billtoggle button.on{background:var(--hi-soft);color:var(--fg)}
-  .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
+  .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
   @media(max-width:820px){.pgrid{grid-template-columns:1fr 1fr}}
   @media(max-width:520px){.pgrid{grid-template-columns:1fr}}
-  .ptier{background:var(--bg);padding:26px 22px;display:flex;flex-direction:column}
+  .ptier{background:var(--bg);padding:28px 24px;display:flex;flex-direction:column}
   .ptier.feat{background:var(--panel);outline:1px solid var(--hi-dim);outline-offset:-1px}
-  .ptier .pname{font-family:var(--sans);font-weight:600;color:var(--fg);font-size:1.05rem}
-  .ptier .ptag{font-family:var(--sans);font-size:.74rem;color:var(--hi);margin:2px 0 14px;min-height:1em}
-  .ptier .price{font-family:var(--serif);font-size:1.9rem;color:var(--fg);line-height:1}
-  .ptier .price small{font-family:var(--sans);font-size:.8rem;color:var(--muted)}
-  .ptier .billed{font-family:var(--sans);font-size:.72rem;color:var(--muted);margin-top:4px;min-height:1em}
-  .ptier ul{list-style:none;padding:0;margin:16px 0 20px;font-family:var(--sans);font-size:.82rem;color:var(--body)}
+  .ptier .pname{font-weight:600;color:var(--fg);font-size:1.02rem}
+  .ptier .ptag{font-family:var(--mono);font-size:.68rem;color:var(--hi);margin:4px 0 16px;min-height:1em;letter-spacing:.04em}
+  .ptier .price{font-size:1.9rem;color:var(--fg);line-height:1;font-weight:600;letter-spacing:-.02em}
+  .ptier .price small{font-size:.8rem;color:var(--muted);font-weight:400}
+  .ptier .billed{font-family:var(--mono);font-size:.66rem;color:var(--muted);margin-top:6px;min-height:1em}
+  .ptier ul{list-style:none;padding:0;margin:18px 0 22px;font-size:.82rem;color:var(--body)}
   .ptier li{padding:4px 0 4px 16px;position:relative}
   .ptier li::before{content:"\2013";position:absolute;left:0;color:var(--hi)}
-  .ptier .pbtn{margin-top:auto;font-family:var(--sans);font-weight:600;font-size:.84rem;background:var(--hi);color:#17111f;border:none;border-radius:4px;padding:11px 16px;cursor:pointer;text-align:center;text-decoration:none;display:block}
-  .ptier .pbtn.ghost{background:none;border:1px solid var(--hi-dim);color:var(--body)}
-  .pnote{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:22px;max-width:70ch;line-height:1.55}
-  footer{border-top:1px solid var(--border);padding:34px 0 60px;color:var(--muted);font-family:var(--sans);font-size:.82rem}
+  .ptier .pbtn{margin-top:auto;font-family:var(--sans);font-weight:600;font-size:.84rem;background:var(--hi);color:#120b22;border:none;border-radius:6px;padding:12px 16px;cursor:pointer;text-align:center;text-decoration:none;display:block}
+  .ptier .pbtn:hover{background:#a98dff}
+  .ptier .pbtn.ghost{background:none;border:1px solid var(--line);color:var(--body)}
+  .ptier .pbtn.ghost:hover{border-color:var(--hi-dim);color:var(--fg)}
+  .pnote{font-size:.84rem;color:var(--muted);margin-top:24px;max-width:70ch;line-height:1.6}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--muted);font-size:.8rem}
   footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   footer a{color:var(--muted)} footer a:hover{color:var(--hi)}
 
-  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+  @media(prefers-reduced-motion:reduce){
+    *{transition:none!important;scroll-behavior:auto!important;animation:none!important}
+    .mark .lane,.mark .out{stroke-dashoffset:0}
+    .mark .core,.mark .rep{opacity:1}
+  }
 </style>
 </head>
 <body>
@@ -129,7 +160,7 @@
     <div class="brand">H<span>Q</span></div>
     <div style="display:flex;align-items:center;gap:6px">
       <nav class="navlinks">
-        <a href="#tools">Tools</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#trust">Trust</a>
+        <a href="#method">Method</a><a href="#tools">Tools</a><a href="#sample">Report</a><a href="#pricing">Pricing</a>
       </nav>
       <span id="hq-acct" style="margin-left:22px"></span>
     </div>
@@ -138,16 +169,65 @@
 
 <main class="wrap">
 
+  <!-- HERO: the model launch -->
   <div class="hero">
-    <div class="label">A parallel deliberation system</div>
-    <h1>Hard calls, reasoned by many minds at once.</h1>
-    <p class="lede">Submit an artifact or a question. A panel of independent reasoners deliberates in parallel, and a structured report comes back in minutes: the positions, the disagreements, and a clear conclusion.</p>
-    <p class="sub">Four tools run on one engine, <b>H4</b>. Each takes a different kind of call. One address, one method, four lenses.</p>
+    <div>
+      <div class="over">Introducing H4</div>
+      <h1>The parallel model for structured deliberation.</h1>
+      <p class="lede">Submit an artifact or a question. H4 runs independent deliberations in parallel and returns one written report in minutes. The report is the deliverable; there is no chat.</p>
+      <div class="ctas">
+        <button class="btn" id="cta-trial">Run a free trial</button>
+        <a class="btn ghost" href="#method">Read the H4 method</a>
+      </div>
+      <div class="fact">Nothing you submit is used for training &middot; RJE runs EU-resident &middot; by Llull Lab, Paris</div>
+    </div>
+    <svg class="mark" viewBox="0 0 560 340" role="img" aria-label="Four parallel deliberation lanes converge through H4 into a single report">
+      <text x="0" y="52" fill="#8A8F98" font-size="10">RJE</text>
+      <text x="0" y="124" fill="#8A8F98" font-size="10">TETRAD</text>
+      <text x="0" y="196" fill="#8A8F98" font-size="10">GRESOL</text>
+      <text x="0" y="268" fill="#8A8F98" font-size="10">THE CHAMBER</text>
+      <path class="lane" pathLength="1" d="M0 66 H160 C220 66 240 148 292 158"/>
+      <path class="lane l2" pathLength="1" d="M0 138 H160 C210 138 230 164 292 168"/>
+      <path class="lane l3" pathLength="1" d="M0 210 H160 C210 210 230 180 292 176"/>
+      <path class="lane l4" pathLength="1" d="M0 282 H160 C220 282 240 194 292 186"/>
+      <g class="core">
+        <rect x="292" y="140" width="64" height="64" fill="none" stroke="#9B7CFF" stroke-width="1.5"/>
+        <text x="311" y="178" fill="#9B7CFF" font-size="15" font-weight="600">H4</text>
+      </g>
+      <path class="out" pathLength="1" d="M356 172 H414"/>
+      <g class="rep">
+        <rect x="414" y="92" width="132" height="160" fill="#FBF7EF"/>
+        <rect x="430" y="112" width="70" height="5" fill="#1A1A1A"/>
+        <rect x="430" y="130" width="100" height="3" fill="#8a1f1f"/>
+        <rect x="430" y="148" width="98" height="2.5" fill="#B9B4A8"/>
+        <rect x="430" y="158" width="92" height="2.5" fill="#B9B4A8"/>
+        <rect x="430" y="168" width="99" height="2.5" fill="#B9B4A8"/>
+        <rect x="430" y="186" width="60" height="3" fill="#8a5a1f"/>
+        <rect x="430" y="198" width="97" height="2.5" fill="#B9B4A8"/>
+        <rect x="430" y="208" width="90" height="2.5" fill="#B9B4A8"/>
+        <rect x="430" y="226" width="45" height="2.5" fill="#B9B4A8"/>
+        <text x="414" y="272" fill="#8A8F98" font-size="10">REPORT &middot; MINUTES</text>
+      </g>
+    </svg>
   </div>
 
-  <!-- TOOLS -->
+  <!-- METHOD -->
+  <section id="method">
+    <div class="label sec-label">The H4 method</div>
+    <p class="sec-lead">H4 is not one system with one voice. It is a combinatorial parallel architecture: several independent reasoners take the same question, work it alone, then press on each other's disagreements. One voice writes the result.</p>
+    <div class="method">
+      <div class="step"><div class="n">01</div><h4>Submit</h4><p>You send an artifact or a question, and choose the lens. Nothing is trained on.</p></div>
+      <div class="step"><div class="n">02</div><h4>Independent positions</h4><p>Several reasoners read it in parallel, each alone, so no single view dominates.</p></div>
+      <div class="step"><div class="n">03</div><h4>Cross-examination</h4><p>They see each other's positions and press on the disagreements.</p></div>
+      <div class="step"><div class="n">04</div><h4>Structured report</h4><p>One voice writes the result in minutes. You can leave and come back to it.</p></div>
+    </div>
+    <p class="caption">A deliberation takes one to three minutes. The report is the deliverable; you will not sit and watch a spinner.</p>
+  </section>
+
+  <!-- TOOLS: four applications of the model -->
   <section id="tools">
-    <div class="label sec-label">Choose by your situation</div>
+    <div class="label sec-label">Four applications of H4</div>
+    <p class="sec-lead">One model, four lenses. Each tool takes a different kind of call; all of them return the same thing, a structured report you can defend.</p>
     <div class="grid">
       <a class="card" href="/rje">
         <div class="situ">Weigh a hard ethical call</div>
@@ -183,11 +263,6 @@
       </a>
     </div>
     <p class="notsure">Not sure which fits? Most calls have several dimensions. <a href="/chamber">Start with The Chamber</a>, or describe your case and we will route it.</p>
-  </section>
-
-  <!-- COMPARISON -->
-  <section>
-    <div class="label sec-label">The four at a glance</div>
     <div class="tscroll">
     <table>
       <thead><tr><th>Tool</th><th>The question it answers</th><th>Typical input</th><th>The report emphasises</th></tr></thead>
@@ -199,18 +274,6 @@
       </tbody>
     </table>
     </div>
-  </section>
-
-  <!-- HOW -->
-  <section id="how">
-    <div class="label sec-label">How a deliberation runs</div>
-    <div class="method">
-      <div class="step"><div class="n">01</div><h4>Submit</h4><p>You send an artifact or a question, and choose the lens. Nothing is trained on.</p></div>
-      <div class="step"><div class="n">02</div><h4>Independent positions</h4><p>Several reasoners read it in parallel, each alone, so no single view dominates.</p></div>
-      <div class="step"><div class="n">03</div><h4>Cross-examination</h4><p>They see each other's positions and press on the disagreements.</p></div>
-      <div class="step"><div class="n">04</div><h4>Structured report</h4><p>One voice writes the result in minutes. You can leave and come back to it.</p></div>
-    </div>
-    <p class="caption">A deliberation takes one to three minutes. The report is the deliverable; you will not sit and watch a spinner.</p>
   </section>
 
   <!-- SAMPLE REPORT: the document is the brand -->
@@ -239,10 +302,22 @@
     </div>
   </section>
 
+  <!-- TRUST -->
+  <section id="trust">
+    <div class="label sec-label">What happens to what you submit</div>
+    <div class="trust">
+      <div><h4>Not used for training</h4><p>Your submissions are used to produce your report and nothing else. They are not used to train any model.</p></div>
+      <div><h4>Where it runs</h4><p>RJE is processed and hosted in the EU. The other three tools run on a global panel; you are told before you submit, and you decide.</p></div>
+      <div><h4>Retention you control</h4><p>A report has a result link you can return to. You can delete a report and its content at any time.</p></div>
+      <div><h4>Don't paste secrets you can't share</h4><p>Treat a submission like sending a document to an outside reviewer. For code and stress-tests, leave out live credentials.</p></div>
+    </div>
+  </section>
+
   <!-- PRICING -->
   <section id="pricing">
     <div class="label sec-label">Pricing</div>
     <p class="pintro">One subscription covers all four tools. A run costs one credit; The Chamber, a deeper deliberation, costs two. Large inputs use proportionally more. Start free, no card.</p>
+    <p class="pro-line">HQ is sold for professional use: solo founders, teams, and organisations.</p>
     <div class="billtoggle" id="billtoggle">
       <button data-int="monthly" class="on">Monthly</button>
       <button data-int="annual">Annual &middot; save ~20%</button>
@@ -284,17 +359,6 @@
     <p class="pnote">Credits from a subscription reset each month and do not roll over; purchased top-up credits never expire. RJE is processed and hosted in the EU; the other three run on a global panel. Nothing you submit is used for training. You can delete a job and its content at any time.</p>
   </section>
 
-  <!-- TRUST -->
-  <section id="trust">
-    <div class="label sec-label">What happens to what you submit</div>
-    <div class="trust">
-      <div><h4>Not used for training</h4><p>Your submissions are used to produce your report and nothing else. They are not used to train any model.</p></div>
-      <div><h4>Where it runs</h4><p>RJE is processed and hosted in the EU. The other three tools run on a global panel; you are told before you submit, and you decide.</p></div>
-      <div><h4>Retention you control</h4><p>A report has a result link you can return to. You can delete a job and its content at any time.</p></div>
-      <div><h4>Don't paste secrets you can't share</h4><p>Treat a submission like sending a document to an outside reviewer. For code and stress-tests, leave out live credentials.</p></div>
-    </div>
-  </section>
-
 </main>
 
 <footer>
@@ -323,7 +387,9 @@
     });
   });
   apply();
-  document.getElementById("p-trial").addEventListener("click", function(){ if(window.HQ){ HQ.account ? (location.href="/chamber") : HQ.promptSignin("Enter your email for 3 free runs. No card."); } });
+  function startTrial(){ if(window.HQ){ HQ.account ? (location.href="/chamber") : HQ.promptSignin("Enter your email for 3 free runs. No card."); } }
+  document.getElementById("p-trial").addEventListener("click", startTrial);
+  document.getElementById("cta-trial").addEventListener("click", startTrial);
   document.getElementById("p-solo").addEventListener("click", function(){ if(window.HQ) HQ.checkout("solo", interval); });
   document.getElementById("p-pro").addEventListener("click", function(){ if(window.HQ) HQ.checkout("pro", interval); });
 })();
