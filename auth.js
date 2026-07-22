@@ -38,6 +38,15 @@
         alert(j.error === "unknown_plan" ? "That plan is not available yet." : "Could not start checkout. Please try again.");
       } catch (e) { alert("Could not reach checkout. Please try again."); }
     },
+    async portal() {
+      if (!this.account) { openModal(); return; }
+      try {
+        var r = await api("/v1/portal", { method: "POST" });
+        var j = await r.json().catch(function () { return {}; });
+        if (j.url) { location.href = j.url; return; }
+        alert("Could not open the billing portal. Please try again.");
+      } catch (e) { alert("Could not reach the billing portal. Please try again."); }
+    },
     async sendLink(email) {
       var r = await api("/v1/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: email }) });
       return r.json().catch(function () { return { error: "bad_response" }; }).then(function (j) { return { ok: r.ok, j: j }; });
@@ -115,8 +124,10 @@
     var plan = a.plan === "trial" ? "trial" : a.plan;
     host.innerHTML = '<span class="em">' + esc(a.email) + '</span><span class="cr">' + a.credits + ' cr</span>' +
       (a.plan === "pro" ? "" : '<button class="primary" id="hq-up">Upgrade</button>') +
+      (a.manageable ? '<button id="hq-manage">Manage</button>' : "") +
       '<button id="hq-out">Sign out</button>';
     if (host.querySelector("#hq-up")) host.querySelector("#hq-up").addEventListener("click", function () { location.href = "/#pricing"; });
+    if (host.querySelector("#hq-manage")) host.querySelector("#hq-manage").addEventListener("click", function () { HQ.portal(); });
     host.querySelector("#hq-out").addEventListener("click", function () { HQ.signout(); });
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
