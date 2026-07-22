@@ -32,10 +32,14 @@
     async checkout(plan, interval) {
       if (!this.account) { openModal("Sign in first, then choose a plan."); return; }
       try {
-        var r = await api("/v1/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: plan, interval: interval || "monthly" }) });
+        // record per-product Terms acceptance first (server is authoritative for the version)
+        var cr = await api("/v1/consent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ product: "hq", email: this.account.email, accepted: true, locale: (navigator.language || "").slice(0, 5) }) });
+        var cj = await cr.json().catch(function () { return {}; });
+        if (!cj.consent_id) { alert("Could not record your acceptance of the Terms. Please try again."); return; }
+        var r = await api("/v1/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: plan, interval: interval || "monthly", consent_id: cj.consent_id }) });
         var j = await r.json();
         if (j.url) { location.href = j.url; return; }
-        alert(j.error === "unknown_plan" ? "That plan is not available yet." : "Could not start checkout. Please try again.");
+        alert((j.error && j.error.indexOf("consent") === 0) ? "Please accept the Terms of Service to continue." : (j.error === "unknown_plan" ? "That plan is not available yet." : "Could not start checkout. Please try again."));
       } catch (e) { alert("Could not reach checkout. Please try again."); }
     },
     async portal() {
