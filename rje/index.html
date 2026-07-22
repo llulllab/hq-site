@@ -43,6 +43,7 @@
   .steps li.done{color:var(--muted)}.steps li.done::before{content:"\25CF";color:var(--hi)}
   .waitnote{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:14px}
   .result{display:none;margin-top:8px}.result.on{display:block}
+  .linklike{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:.85rem;margin-left:14px;padding:0}
   .doc{background:var(--paper);color:var(--paper-ink);border-radius:3px;padding:clamp(24px,4vw,42px);box-shadow:0 30px 80px -40px rgba(0,0,0,.9);font-family:var(--serif)}
   .doc .rlabel{font-family:var(--sans);font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--paper-muted);margin-bottom:6px}
   .doc h1{color:var(--paper-ink);font-size:1.5rem;margin:.2em 0 .5em}
@@ -88,7 +89,7 @@
   </section>
   <section class="result" id="result">
     <div class="doc" id="doc"></div>
-    <div class="again"><button id="restart">Run another</button></div>
+    <div class="again"><button id="restart">Run another</button><button id="delreport" class="linklike">Delete this report</button></div>
   </section>
   <div class="err" id="err"></div>
 </main>
@@ -135,7 +136,7 @@ function md(t){
   return out.join("\n");
 }
 
-let stepTimer;
+let stepTimer, lastJob = null;
 async function poll(jobId){
   for (let i=0;i<40;i++){
     await new Promise(r => setTimeout(r, 5000));
@@ -212,6 +213,7 @@ async function run(){
       if (r.status===401) HQ.promptSignin();
       return;
     }
+    lastJob = j.jobId; el("delreport").style.display = "";
     const answer = await poll(j.jobId);
     clearInterval(stepTimer); setStep(3);
     el("doc").innerHTML = '<div class="rlabel">'+P.title+' report</div>'+md(answer);
@@ -228,6 +230,12 @@ async function run(){
 el("go").addEventListener("click", run);
 refreshHint();
 el("restart").addEventListener("click", ()=>{ el("result").classList.remove("on"); el("input-sec").style.display="block"; el("go").disabled=false; el("artifact").value=""; el("context").value=""; window.scrollTo({top:0,behavior:"smooth"}); });
+el("delreport").addEventListener("click", async ()=>{
+  if(!lastJob) return;
+  try{ await fetch(API+"/v1/job/"+lastJob, { method:"DELETE", credentials:"include" }); }catch(e){}
+  lastJob = null; el("delreport").style.display = "none";
+  el("doc").innerHTML = '<div class="rlabel">Report deleted</div><p>The report and its content were removed from our servers.</p>';
+});
 </script>
 </body>
 </html>
