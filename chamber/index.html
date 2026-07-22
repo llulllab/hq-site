@@ -58,7 +58,7 @@
 </style>
 </head>
 <body>
-<header><div class="wrap bar"><div class="brand">H<span>Q</span></div><a class="back" href="/">&larr; all tools</a></div></header>
+<header><div class="wrap bar"><div class="brand">H<span>Q</span></div><div style="display:flex;align-items:center;gap:18px"><span id="hq-acct"></span><a class="back" href="/">&larr; all tools</a></div></div></header>
 <main class="wrap">
   <div class="hero">
     <div class="situ" id="situ"></div>
@@ -68,7 +68,7 @@
   <section id="input-sec">
     <textarea id="artifact"></textarea>
     <input class="ctx" id="context" placeholder="Optional: context, constraints, what to focus on">
-    <div class="row"><button id="go">Deliberate</button><span class="hint">A deliberation takes one to three minutes.</span></div>
+    <div class="row"><button id="go">Deliberate</button><span class="hint" id="costhint">A deliberation takes one to three minutes.</span></div>
     <div class="trustline">Not used for training. <span id="residencyline">Runs on a global panel; your input goes to external model providers.</span> You can leave and return to the report.</div>
   </section>
   <section class="stepper" id="stepper">
@@ -84,6 +84,7 @@
   <div class="err" id="err"></div>
 </main>
 <footer><div class="wrap">H4 &middot; a Llull Lab system. Paris. &middot; <a href="/">Home</a></div></footer>
+<script src="/auth.js"></script>
 <script>
 const API = "https://api.h-q.io";
 const PANELS = {
@@ -129,36 +130,74 @@ let stepTimer;
 async function poll(jobId){
   for (let i=0;i<40;i++){
     await new Promise(r => setTimeout(r, 5000));
-    const r = await fetch(API+"/v1/job/"+jobId);
+    const r = await fetch(API+"/v1/job/"+jobId, { credentials:"include" });
     const j = await r.json();
     if (j.status==="done") return j.answer;
     if (j.status==="error") throw new Error(j.error||"deliberation failed");
+    if (j.status==="expired") throw new Error("this result is no longer available");
   }
   throw new Error("timed out");
 }
+
+// live cost hint + account-aware button state
+function refreshHint(){
+  const acc = window.HQ && HQ.account;
+  const text = el("artifact").value + " " + el("context").value;
+  const cost = window.HQ ? HQ.estCredits(id, text) : 1;
+  const base = "A deliberation takes one to three minutes.";
+  if (!acc){ el("costhint").textContent = base + " Sign in for 3 free runs."; return; }
+  const has = acc.credits;
+  el("costhint").textContent = "This run costs " + cost + " credit" + (cost>1?"s":"") + ". You have " + has + ".";
+}
+el("artifact").addEventListener("input", refreshHint);
+el("context").addEventListener("input", refreshHint);
+if (window.HQ) HQ.onChange(function(){ refreshHint(); });
+
+function gateMessage(status, j){
+  if (status===401) return "Sign in to run a deliberation.";
+  if (status===402) return "You are out of credits. Upgrade to keep going.";
+  if (status===413) return "This input is too large for your plan (limit "+(j.tokenCap||"")+" tokens). Shorten it or upgrade.";
+  if (status===429) return "You already have a deliberation running. Wait for it to finish.";
+  if (j && j.error==="chamber_requires_paid_plan") return "The Chamber is available on a paid plan. Upgrade to use it.";
+  return (j && j.error) ? j.error : "could not start";
+}
+
 async function run(){
   const artifact = el("artifact").value.trim();
   if (!artifact){ el("artifact").focus(); return; }
+  if (!window.HQ || !HQ.account){ HQ.promptSignin("Sign in to run a deliberation. You get 3 free runs, no card."); return; }
+  const idemKey = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now())+Math.random();
   el("go").disabled = true; el("input-sec").style.display="none";
   el("stepper").classList.add("on"); el("err").style.display="none";
   setStep(0);
   let ui=0; stepTimer=setInterval(()=>{ ui=Math.min(ui+1,2); setStep(ui); }, 30000);
   try{
-    const r = await fetch(API+"/v1/"+id, { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ artifact, context: el("context").value.trim() }) });
+    const r = await fetch(API+"/v1/"+id, { method:"POST", credentials:"include", headers:{"content-type":"application/json"}, body: JSON.stringify({ artifact, context: el("context").value.trim(), idemKey }) });
     const j = await r.json();
-    if (!j.jobId) throw new Error(j.error||"could not start");
+    if (!r.ok || !j.jobId){
+      clearInterval(stepTimer);
+      el("stepper").classList.remove("on"); el("input-sec").style.display="block"; el("go").disabled=false;
+      const msg = gateMessage(r.status, j);
+      el("err").innerHTML = msg + (r.status===402 || (j && j.error==="chamber_requires_paid_plan") ? ' &nbsp; <a href="/#pricing">See plans</a>' : "");
+      el("err").style.display="block";
+      if (r.status===401) HQ.promptSignin();
+      return;
+    }
     const answer = await poll(j.jobId);
     clearInterval(stepTimer); setStep(3);
     el("doc").innerHTML = '<div class="rlabel">'+P.title+' report</div>'+md(answer);
     el("stepper").classList.remove("on"); el("result").classList.add("on");
     el("result").scrollIntoView({behavior:"smooth",block:"start"});
+    if (window.HQ) HQ.refresh();   // credits were spent; update the chip
   }catch(e){
     clearInterval(stepTimer);
     el("stepper").classList.remove("on"); el("input-sec").style.display="block"; el("go").disabled=false;
     el("err").textContent = "Something went wrong: "+e.message+". Please try again."; el("err").style.display="block";
+    if (window.HQ) HQ.refresh();
   }
 }
 el("go").addEventListener("click", run);
+refreshHint();
 el("restart").addEventListener("click", ()=>{ el("result").classList.remove("on"); el("input-sec").style.display="block"; el("go").disabled=false; el("artifact").value=""; el("context").value=""; window.scrollTo({top:0,behavior:"smooth"}); });
 </script>
 </body>
