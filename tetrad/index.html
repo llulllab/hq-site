@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tetrad: pre-ship review · HQ</title>
 <meta name="description" content="Tetrad is a four-expert ship gate. Independent reviewers try to break your code, design, or product decision and return a severity-ranked verdict with fixes.">
+<link rel="canonical" href="https://h-q.io/tetrad/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://h-q.io/tetrad/">
+<meta property="og:site_name" content="HQ">
+<meta property="og:title" content="Tetrad: pre-ship review">
+<meta property="og:description" content="Tetrad is a four-expert ship gate. Independent reviewers try to break your code, design, or product decision and return a severity-ranked verdict with fixes.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tetrad: pre-ship review">
+<meta name="twitter:description" content="Tetrad is a four-expert ship gate. Independent reviewers try to break your code, design, or product decision and return a severity-ranked verdict with fixes.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="%2308090B"/><path d="M4 8h13M4 13h13M4 19h13M4 24h13" stroke="%238A8F98" stroke-width="2"/><rect x="21" y="8" width="7" height="18" fill="%23FBF7EF"/></svg>'>
@@ -68,7 +77,7 @@
 <main class="wrap">
   <div class="hero">
     <div class="situ" id="situ"></div>
-    <h1><span id="titletext"></span><span class="eu" id="eubadge">EU-resident</span></h1>
+    <h1><span id="titletext">Tetrad</span><span class="eu" id="eubadge">EU-resident</span></h1>
     <p id="desc"></p>
   </div>
   <section id="input-sec">
@@ -102,7 +111,7 @@ const PANELS = {
   rje:     { situ:"Weigh a hard ethical call", title:"RJE", eu:true, desc:"Ethical deliberation grounded in European values. Independent perspectives reason your case, and you get an auditable decision with the vote and the dissent on record.", ph:"Describe the ethical question: the situation, the stakeholders, the constraints, and what decision is needed.", cta:"Deliberate" },
   tetrad:  { situ:"Decide if it is ready to ship", title:"Tetrad", eu:false, desc:"A four-expert ship gate. Independent reviewers try to break your code, design, or product decision and return a severity-ranked verdict with fixes.", ph:"Paste the code, design, or decision to review. Leave out live credentials.", cta:"Run the gate" },
   gresol:  { situ:"Stress-test before you launch", title:"Gresol", eu:false, desc:"The crucible. A panel attacks your product, site, page, or contract from every angle it can find and shows you exactly where it cracks, ranked by severity.", ph:"Paste the product copy, page, contract, or description to stress-test.", cta:"Into the crucible" },
-  chamber: { situ:"See how the best minds read it", title:"The Chamber", eu:false, desc:"An ACI. For the questions one mind cannot settle. A panel reasons your question together and returns where they converge, the strongest objection, and a considered view.", ph:"Ask the question you want the panel to reason through.", cta:"Convene the panel" }
+  chamber: { situ:"See how the best minds read it", title:"ACI: The Chamber", eu:false, desc:"An ACI. For the questions one mind cannot settle. A panel reasons your question together and returns where they converge, the strongest objection, and a considered view.", ph:"Ask the question you want the panel to reason through.", cta:"Convene the panel" }
 };
 const seg = location.pathname.split("/").filter(Boolean).pop() || "chamber";
 const id = seg.replace(/\.html$/, "").toLowerCase();
@@ -113,7 +122,6 @@ el("titletext").textContent = P.title;
 el("desc").textContent = P.desc;
 el("artifact").placeholder = P.ph;
 el("go").textContent = P.cta;
-document.title = P.title + " · HQ";
 if (P.eu) { el("eubadge").style.display = "inline-block"; el("residencyline").textContent = "Processed and hosted in the EU."; }
 
 function setStep(n){ Array.from(el("steps").children).forEach(li => { const s = +li.dataset.s; li.classList.toggle("active", s===n); li.classList.toggle("done", s<n); }); }
