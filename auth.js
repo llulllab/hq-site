@@ -4,6 +4,27 @@
   "use strict";
   var API = "https://api.h-q.io";
   var listeners = [];
+  var checkoutBusy = false;
+  var pendingGo = null, checkoutGen = 0, inflight = [], signingOut = false;
+  function httpsUrl(u) { try { var x = new URL(u); return x.protocol === "https:" && (x.hostname === "stripe.com" || x.hostname.slice(-11) === ".stripe.com"); } catch (e) { return false; } }
+  function leaveTo(u, delay, gen) {
+    pendingGo = setTimeout(function () {
+      pendingGo = null;
+      if (gen !== checkoutGen) return;
+      if (!HQ.account) { checkoutBusy = false; if (noteBox) hideNote(); return; }
+      location.href = u;
+      setTimeout(function () { if (gen === checkoutGen) { checkoutBusy = false; if (noteBox) hideNote(); } }, 15000);
+    }, delay);
+  }
+  function cancelCheckout() {
+    checkoutGen++;
+    if (pendingGo) { clearTimeout(pendingGo); pendingGo = null; }
+    inflight.forEach(function (c) { try { c.abort(); } catch (e) {} });
+    inflight = [];
+    if (noteBox) hideNote();
+    checkoutBusy = false;
+  }
+  function timed(opts, ms) { if (typeof AbortController === "undefined") { var t0, dl = new Promise(function (res, rej) { t0 = setTimeout(function () { rej(new Error("timeout")); }, ms); }); dl.catch(function () {}); opts.hqDeadline = dl; return { opts: opts, done: function () { clearTimeout(t0); } }; } var c = new AbortController(); inflight.push(c); var t = setTimeout(function () { c.abort(); }, ms); opts.signal = c.signal; return { opts: opts, done: function () { clearTimeout(t); inflight = inflight.filter(function (x) { return x !== c; }); } }; }
 
   // client-side mirror of the gate's cost logic (display only; server is authoritative)
   function estTokens(t) { return Math.ceil((t ? t.length : 0) / 4); }
@@ -12,7 +33,10 @@
   function api(path, opts) {
     opts = opts || {};
     opts.credentials = "include";
-    return fetch(API + path, opts);
+    var dl = opts.hqDeadline;
+    if (!dl) return fetch(API + path, opts);
+    delete opts.hqDeadline;
+    return Promise.race([fetch(API + path, opts), dl]).then(function (r) { var j = r.json; r.json = function () { return Promise.race([j.call(r), dl]); }; return r; });
   }
 
   var HQ = {
@@ -28,28 +52,50 @@
       return this.account;
     },
     promptSignin: function (msg) { openModal(msg); },
-    async signout() { try { await api("/v1/logout", { method: "POST" }); } catch (e) {} this.account = null; render(); listeners.forEach(function (cb) { cb(null); }); },
+    async signout() { if (signingOut) return; cancelCheckout(); signingOut = true; var tl = timed({ method: "POST" }, 10000); try { await api("/v1/logout", tl.opts); } catch (e) {} finally { tl.done(); signingOut = false; } cancelCheckout(); this.account = null; render(); listeners.forEach(function (cb) { cb(null); }); },
     async checkout(plan, interval) {
       if (!this.account) { openModal("Sign in first, then choose a plan."); return; }
+      if (checkoutBusy || signingOut) return;
+      checkoutBusy = true;
+      var going = false, gen = checkoutGen, self = this, tc = null, tk = null;
+      var stale = function () { return gen !== checkoutGen || !self.account || signingOut; };
       try {
         // record per-product Terms acceptance first (server is authoritative for the version)
-        var cr = await api("/v1/consent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ product: "hq", email: this.account.email, accepted: true, locale: (navigator.language || "").slice(0, 5) }) });
-        var cj = await cr.json().catch(function () { return {}; });
+        tc = timed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ product: "hq", email: this.account.email, accepted: true, locale: (navigator.language || "").slice(0, 5) }) }, 20000);
+        var cr = await api("/v1/consent", tc.opts);
+        var cj = await cr.json().catch(function () { return {}; }); tc.done();
+        if (stale()) return;
         if (!cj.consent_id) { alert("Could not record your acceptance of the Terms. Please try again."); return; }
-        var r = await api("/v1/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: plan, interval: interval || "monthly", consent_id: cj.consent_id }) });
-        var j = await r.json();
-        if (j.url) { location.href = j.url; return; }
+        tk = timed({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ plan: plan, interval: interval || "monthly", consent_id: cj.consent_id }) }, 20000);
+        var r = await api("/v1/checkout", tk.opts);
+        var j = await r.json(); tk.done();
+        if (stale()) return;
+        if (j.url && !httpsUrl(j.url)) j = { error: "bad_url" };
+        if (j.url && j.portal) {
+          going = true;
+          leaveTo(j.url, 5000, gen);
+          try { showNote(gen); } catch (e) {}
+          return;
+        }
+        if (j.url) { going = true; leaveTo(j.url, 0, gen); return; }
         alert((j.error && j.error.indexOf("consent") === 0) ? "Please accept the Terms of Service to continue." : (j.error === "unknown_plan" ? "That plan is not available yet." : "Could not start checkout. Please try again."));
-      } catch (e) { alert("Could not reach checkout. Please try again."); }
+      } catch (e) { if (!stale()) alert("Could not reach checkout. Please try again."); }
+      finally { if (tc) tc.done(); if (tk) tk.done(); if (!going && gen === checkoutGen) checkoutBusy = false; }
     },
     async portal() {
+      if (signingOut || checkoutBusy) return;
       if (!this.account) { openModal(); return; }
+      checkoutBusy = true;
+      var going = false, gen = checkoutGen, self = this, tp = timed({ method: "POST" }, 20000);
+      var stale = function () { return gen !== checkoutGen || !self.account || signingOut; };
       try {
-        var r = await api("/v1/portal", { method: "POST" });
+        var r = await api("/v1/portal", tp.opts);
         var j = await r.json().catch(function () { return {}; });
-        if (j.url) { location.href = j.url; return; }
+        if (stale()) return;
+        if (j.url && httpsUrl(j.url)) { going = true; location.href = j.url; setTimeout(function () { if (gen === checkoutGen) checkoutBusy = false; }, 15000); return; }
         alert("Could not open the billing portal. Please try again.");
-      } catch (e) { alert("Could not reach the billing portal. Please try again."); }
+      } catch (e) { if (!stale()) alert("Could not reach the billing portal. Please try again."); }
+      finally { tp.done(); if (!going && gen === checkoutGen) checkoutBusy = false; }
     },
     async sendLink(email) {
       var r = await api("/v1/signup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: email }) });
@@ -111,6 +157,27 @@
         : "Could not send the link. Check the address and try again.";
     }
   }
+  var noteBox;
+  function showNote(gen) {
+    if (!noteBox) {
+      noteBox = document.createElement("div");
+      noteBox.className = "hqm";
+      noteBox.setAttribute("role", "status");
+      noteBox.setAttribute("aria-live", "polite");
+      noteBox.innerHTML = '<div class="box"><p id="hqn-msg" style="margin:0;color:#C6C9CE;font-size:.95rem"></p></div>';
+      document.body.appendChild(noteBox);
+    }
+    noteBox.classList.add("on");
+    setTimeout(function () {
+      if (gen !== checkoutGen || !noteBox.classList.contains("on")) return;
+      noteBox.querySelector("#hqn-msg").innerHTML = 'You already have an HQ plan. To change it, write to <a href="mailto:contact@llulllab.com" style="color:#9B7CFF">contact@llulllab.com</a>. Opening your billing page.';
+    }, 60);
+  }
+  function hideNote() { noteBox.classList.remove("on"); noteBox.querySelector("#hqn-msg").textContent = ""; }
+  window.addEventListener("pageshow", function (e) {
+    if (!e.persisted) return;
+    cancelCheckout();
+  });
   function openModal(msg) {
     if (!modal) buildModal();
     modal.querySelector("#hqm-msg").textContent = msg || "Enter your email and we will send you a one-time sign-in link. No password.";
