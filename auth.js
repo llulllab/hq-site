@@ -52,7 +52,19 @@
       return this.account;
     },
     promptSignin: function (msg) { openModal(msg); },
-    async signout() { if (signingOut) return; cancelCheckout(); signingOut = true; var tl = timed({ method: "POST" }, 10000); try { await api("/v1/logout", tl.opts); } catch (e) {} finally { tl.done(); signingOut = false; } cancelCheckout(); this.account = null; render(); listeners.forEach(function (cb) { cb(null); }); },
+    async signout() {
+      if (signingOut) return; cancelCheckout(); signingOut = true;
+      var btn = document.getElementById("hq-out"); if (btn) { btn.disabled = true; btn.setAttribute("aria-busy", "true"); }
+      var ok = false, tl = timed({ method: "POST" }, 10000);
+      try { var r = await api("/v1/logout", tl.opts); if (r && r.ok) { var jl = await r.json(); ok = !!(jl && jl.ok === true); } } catch (e) { ok = false; } finally { tl.done(); }
+      if (!ok) {
+        // not confirmed: only the server's own "no session" answer counts as signed out; anything else means still signed in here
+        var still = true, ta = timed({}, 5000);
+        try { var ra = await api("/v1/account", ta.opts); if (ra.status === 401) { var jb = await ra.json(); if (jb && jb.error === "not_signed_in") still = false; } } catch (e) {} finally { ta.done(); }
+        if (still) { signingOut = false; cancelCheckout(); render(); showMsg(SIGNOUT_FAILED); return; }
+      }
+      signingOut = false; cancelCheckout(); this.account = null; render(); listeners.forEach(function (cb) { cb(null); });
+    },
     async checkout(plan, interval) {
       if (!this.account) { openModal("Sign in first, then choose a plan."); return; }
       if (checkoutBusy || signingOut) return;
@@ -174,9 +186,41 @@
     }, 60);
   }
   function hideNote() { noteBox.classList.remove("on"); noteBox.querySelector("#hqn-msg").textContent = ""; }
+  var SIGNOUT_FAILED = "We could not sign you out. You are still signed in on this device. Please check your connection and try again. If it keeps failing, clear this site's cookies in your browser settings. Sessions also end on their own after 7 days.";
+  var msgBox;
+  function showMsg(text) {
+    if (!msgBox) {
+      msgBox = document.createElement("div");
+      msgBox.className = "hqm";
+      msgBox.setAttribute("role", "alertdialog");
+      msgBox.setAttribute("aria-modal", "true");
+      msgBox.setAttribute("aria-labelledby", "hqx-msg");
+      msgBox.innerHTML = '<div class="box"><p id="hqx-msg" style="margin:0 0 16px;color:#C6C9CE;font-size:.95rem;line-height:1.5"></p><div class="act"><button class="x" id="hqx-ok">OK</button></div></div>';
+      document.body.appendChild(msgBox);
+      msgBox.querySelector("#hqx-ok").addEventListener("click", closeMsg);
+      msgBox.addEventListener("click", function (e) { if (e.target === msgBox) closeMsg(); });
+      // the only control is OK: keep keyboard focus inside the dialog, Escape closes it
+      msgBox.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { e.preventDefault(); closeMsg(); }
+        else if (e.key === "Tab") { e.preventDefault(); msgBox.querySelector("#hqx-ok").focus(); }
+      });
+    }
+    msgBox.querySelector("#hqx-msg").textContent = text;
+    msgBox.classList.add("on");
+    [].forEach.call(document.body.children, function (el) { if (el !== msgBox) el.inert = true; });   // background out of reach while the dialog is open
+    setTimeout(function () { msgBox.querySelector("#hqx-ok").focus(); }, 30);
+  }
+  function closeMsg() {
+    if (!msgBox) return;
+    msgBox.classList.remove("on");
+    [].forEach.call(document.body.children, function (el) { el.inert = false; });
+    var b = document.getElementById("hq-out"); if (b) b.focus();
+  }
   window.addEventListener("pageshow", function (e) {
     if (!e.persisted) return;
     cancelCheckout();
+    if (signingOut) { signingOut = false; render(); }   // a page restored from the back/forward cache must not stay stuck in "signing out"
+    if (msgBox && msgBox.classList.contains("on")) closeMsg();
   });
   function openModal(msg) {
     if (!modal) buildModal();
